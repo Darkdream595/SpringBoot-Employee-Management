@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>员工考勤管理系统 - HR</title>
+    <link rel="stylesheet" href="//unpkg.com/element-plus/dist/index.css">
+    <style>
+        .header {
+            background-color: #409EFF;
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .container {
+            padding: 20px;
+            min-height: 150vh;
+        }
+
+        .welcome {
+            margin-bottom: 20px;
+            animation: fadeIn 1s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .nav-menu {
+            margin-bottom: 20px;
+        }
+
+        .data-card {
+            margin-bottom: 20px;
+            transition: all 0.3s;
+            background-color: white;
+        }
+
+        .data-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-header .title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .operation-column {
+            text-align: center;
+        }
+
+        .el-dialog {
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            margin: 0 !important;
+            max-height: 80vh !important;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .el-dialog__body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .el-dialog__footer {
+            padding: 20px;
+            border-top: 1px solid #dcdfe6;
+        }
+
+        .el-form-item {
+            margin-bottom: 22px;
+        }
+
+        .el-select {
+            width: 100%;
+        }
+
+        .el-date-picker,
+        .el-time-picker {
+            width: 100%;
+        }
+
+        .el-input-number {
+            width: 100%;
+        }
+
+        /* 遮罩层样式 */
+        .v-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        #app {
+            min-height: 100vh;
+        }
+
+        .el-card {
+            margin-bottom: 50vh;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div class="header">
+            <h2>员工考勤管理系统</h2>
+            <el-button type="danger" @click="logout">退出登录</el-button>
+        </div>
+
+        <div class="container">
+            <div class="welcome">
+                <el-alert title="欢迎访问员工考勤管理系统" type="success" :closable="false" show-icon>
+                    <p>您当前的角色是：HR</p>
+                </el-alert>
+            </div>
+
+            <div class="nav-menu">
+                <el-menu mode="horizontal" :default-active="activeMenu" @select="handleSelect">
+                    <el-menu-item index="employee">员工管理</el-menu-item>
+                    <el-menu-item index="attendance">考勤管理</el-menu-item>
+                    <el-menu-item index="salary">薪资管理</el-menu-item>
+                </el-menu>
+            </div>
+
+            <!-- 员工管理 -->
+            <el-card v-if="activeMenu === 'employee'" class="data-card">
+                <template #header>
+                    <div class="card-header">
+                        <span class="title">员工管理</span>
+                        <el-button type="primary" @click="handleAddEmployee">添加员工</el-button>
+                    </div>
+                </template>
+                <el-table :data="employeeList" stripe style="width: 100%">
+                    <el-table-column prop="id" label="ID" width="80" align="center">
+                        <template #default="scope">
+                            {{ scope.row.id || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="username" label="用户名" width="150" align="center">
+                        <template #default="scope">
+                            {{ scope.row.username || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="gmtCreate" label="创建时间" width="180" align="center">
+                        <template #default="scope">
+                            {{ formatDateTime(scope.row.gmtCreate) || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="gmtModified" label="修改时间" width="180" align="center">
+                        <template #default="scope">
+                            {{ formatDateTime(scope.row.gmtModified) || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="roles" label="角色" align="center">
+                        <template #default="scope">
+                            <template v-if="scope.row.roles && scope.row.roles.length">
+                                <el-tag v-for="role in scope.row.roles" :key="role" style="margin-right: 5px">
+                                    {{ role }}
+                                </el-tag>
+                            </template>
+                            <template v-else>null</template>
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="操作" width="200" align="center">
+                        <template #default="scope">
+                            <el-button type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
+                            <el-button type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+
+                <!-- 编辑对话框 -->
+                <el-dialog v-model="editDialogVisible" title="编辑用户" width="30%">
+                    <el-form :model="editForm" label-width="80px">
+                        <el-form-item label="用户名">
+                            <el-input v-model="editForm.username"></el-input>
+                        </el-form-item>
+                        <el-form-item label="密码">
+                            <el-input v-model="editForm.password" type="password" placeholder="不修改请留空"></el-input>
+                        </el-form-item>
+                        <el-form-item label="角色">
+                            <el-select v-model="editForm.roles" multiple placeholder="请选择角色">
+                                <el-option label="普通员工" value="NORMAL_EMPLOYEE"></el-option>
+                                <el-option label="HR" value="HR"></el-option>
+                                <el-option label="系统管理员" value="SYSTEM_ADMIN"></el-option>
+                            </el-select>
+                        </el-form-item>
+                    </el-form>
+                    <template #footer>
+                        <span class="dialog-footer">
+                            <el-button @click="editDialogVisible = false">取消</el-button>
+                            <el-button type="primary" @click="submitEdit">确定</el-button>
+                        </span>
+                    </template>
+                </el-dialog>
+
+                <!-- 添加员工对话框 -->
+                <el-dialog v-model="addEmployeeDialogVisible" title="添加员工" width="30%">
+                    <el-form :model="addEmployeeForm" label-width="80px">
+                        <el-form-item label="用户名">
+                            <el-input v-model="addEmployeeForm.username"></el-input>
+                        </el-form-item>
+                        <el-form-item label="密码">
+                            <el-input v-model="addEmployeeForm.password" type="password"></el-input>
+                        </el-form-item>
+                        <el-form-item label="角色">
+                            <el-select v-model="addEmployeeForm.roles" multiple placeholder="请选择角色">
+                                <el-option label="普通员工" value="NORMAL_EMPLOYEE"></el-option>
+                                <el-option label="HR" value="HR"></el-option>
+                                <el-option label="系统管理员" value="SYSTEM_ADMIN"></el-option>
+                            </el-select>
+                        </el-form-item>
+                    </el-form>
+                    <template #footer>
+                        <span class="dialog-footer">
+                            <el-button @click="addEmployeeDialogVisible = false">取消</el-button>
+                            <el-button type="primary" @click="submitAddEmployee">确定</el-button>
+                        </span>
+                    </template>
+                </el-dialog>
+            </el-card>
+
+            <!-- 考勤管理 -->
+            <el-card v-if="activeMenu === 'attendance'" class="data-card">
+                <template #header>
+                    <div class="card-header">
+                        <span class="title">考勤管理</span>
+                        <el-button type="primary" @click="handleAddAttendance">添加考勤记录</el-button>
+                    </div>
+                </template>
+                <el-table :data="attendanceList" stripe style="width: 100%">
+                    <el-table-column prop="id" label="ID" width="80" align="center">
+                        <template #default="scope">
+                            {{ scope.row.id || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="userId" label="用户ID" width="100" align="center">
+                        <template #default="scope">
+                            {{ scope.row.userId || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="username" label="用户名" width="120" align="center">
+                        <template #default="scope">
+                            {{ scope.row.username || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="attendanceDate" label="考勤日期" width="120" align="center">
+                        <template #default="scope">
+                            {{ scope.row.attendanceDate || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="checkIn" label="签到时间" width="120" align="center">
+                        <template #default="scope">
+                            {{ scope.row.checkIn || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="checkOut" label="签退时间" width="120" align="center">
+                        <template #default="scope">
+                            {{ scope.row.checkOut || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="status" label="状态" width="100" align="center">
+                        <template #default="scope">
+                            {{ scope.row.status || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="gmtCreate" label="创建时间" width="180" align="center">
+                        <template #default="scope">
+                            {{ formatDateTime(scope.row.gmtCreate) || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="gmtModified" label="修改时间" width="180" align="center">
+                        <template #default="scope">
+                            {{ formatDateTime(scope.row.gmtModified) || 'null' }}
+                        </template>
+                    </el-table-column>
+                </el-table>
+
+                <!-- 添加考勤记录对话框 -->
+                <el-dialog v-model="addAttendanceDialogVisible" title="添加考勤记录" width="30%">
+                    <el-form :model="addAttendanceForm" label-width="100px">
+                        <el-form-item label="用户">
+                            <el-select v-model="addAttendanceForm.userId" placeholder="请选择用户">
+                                <el-option v-for="user in employeeList" :key="user.id" :label="user.username"
+                                    :value="user.id">
+                                </el-option>
+                            </el-select>
+                        </el-form-item>
+                        <el-form-item label="��勤日期">
+                            <el-date-picker v-model="addAttendanceForm.attendanceDate" type="date" placeholder="选择日期">
+                            </el-date-picker>
+                        </el-form-item>
+                        <el-form-item label="签到时间">
+                            <el-time-picker v-model="addAttendanceForm.checkIn" placeholder="选择时间">
+                            </el-time-picker>
+                        </el-form-item>
+                        <el-form-item label="签退时间">
+                            <el-time-picker v-model="addAttendanceForm.checkOut" placeholder="选择时间">
+                            </el-time-picker>
+                        </el-form-item>
+                        <el-form-item label="状态">
+                            <el-select v-model="addAttendanceForm.status" placeholder="请选择状态">
+                                <el-option label="正常" value="正常"></el-option>
+                                <el-option label="迟到" value="迟到"></el-option>
+                                <el-option label="早退" value="早退"></el-option>
+                                <el-option label="缺勤" value="缺勤"></el-option>
+                            </el-select>
+                        </el-form-item>
+                    </el-form>
+                    <template #footer>
+                        <span class="dialog-footer">
+                            <el-button @click="addAttendanceDialogVisible = false">取消</el-button>
+                            <el-button type="primary" @click="submitAddAttendance">确定</el-button>
+                        </span>
+                    </template>
+                </el-dialog>
+            </el-card>
+
+            <!-- 薪资管理 -->
+            <el-card v-if="activeMenu === 'salary'" class="data-card">
+                <template #header>
+                    <div class="card-header">
+                        <span class="title">薪资管理</span>
+                        <el-button type="primary" @click="handleAddSalary">添加薪资记录</el-button>
+                    </div>
+                </template>
+                <el-table :data="salaryList" stripe style="width: 100%">
+                    <el-table-column prop="id" label="ID" width="80" align="center">
+                        <template #default="scope">
+                            {{ scope.row.id || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="userId" label="用户ID" width="100" align="center">
+                        <template #default="scope">
+                            {{ scope.row.userId || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="username" label="用户名" width="120" align="center">
+                        <template #default="scope">
+                            {{ scope.row.username || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="salaryMonth" label="工资月份" width="120" align="center">
+                        <template #default="scope">
+                            {{ scope.row.salaryMonth || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="baseSalary" label="基本工资" width="120" align="center">
+                        <template #default="scope">
+                            {{ formatCurrency(scope.row.baseSalary) || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="bonus" label="奖金" width="120" align="center">
+                        <template #default="scope">
+                            {{ formatCurrency(scope.row.bonus) || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="totalSalary" label="总工资" width="120" align="center">
+                        <template #default="scope">
+                            {{ formatCurrency(scope.row.totalSalary) || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="gmtCreate" label="创建时间" width="180" align="center">
+                        <template #default="scope">
+                            {{ formatDateTime(scope.row.gmtCreate) || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="gmtModified" label="修改时间" width="180" align="center">
+                        <template #default="scope">
+                            {{ formatDateTime(scope.row.gmtModified) || 'null' }}
+                        </template>
+                    </el-table-column>
+                </el-table>
+
+                <!-- 添加薪资记录对话框 -->
+                <el-dialog v-model="addSalaryDialogVisible" title="添加薪资记录" width="30%">
+                    <el-form :model="addSalaryForm" label-width="100px">
+                        <el-form-item label="用户">
+                            <el-select v-model="addSalaryForm.userId" placeholder="请选择用户">
+                                <el-option v-for="user in employeeList" :key="user.id" :label="user.username"
+                                    :value="user.id">
+                                </el-option>
+                            </el-select>
+                        </el-form-item>
+                        <el-form-item label="工资月份">
+                            <el-date-picker v-model="addSalaryForm.salaryMonth" type="month" placeholder="选择月份"
+                                format="YYYY-MM" value-format="YYYY-MM">
+                            </el-date-picker>
+                        </el-form-item>
+                        <el-form-item label="基本工资">
+                            <el-input-number v-model="addSalaryForm.baseSalary" :precision="2"
+                                :step="100"></el-input-number>
+                        </el-form-item>
+                        <el-form-item label="奖金">
+                            <el-input-number v-model="addSalaryForm.bonus" :precision="2" :step="100"></el-input-number>
+                        </el-form-item>
+                    </el-form>
+                    <template #footer>
+                        <span class="dialog-footer">
+                            <el-button @click="addSalaryDialogVisible = false">取消</el-button>
+                            <el-button type="primary" @click="submitAddSalary">确定</el-button>
+                        </span>
+                    </template>
+                </el-dialog>
+            </el-card>
+        </div>
+    </div>
+
+    <script src="//unpkg.com/vue@3"></script>
+    <script src="//unpkg.com/element-plus"></script>
+    <script src="//unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        // 配置 axios 默认值
+        axios.defaults.withCredentials = true;
+
+        // 添加请求拦截器
+        axios.interceptors.request.use(function (config) {
+            // 从 cookie 中获取 CSRF token
+            const cookies = document.cookie.split(';');
+            const csrfCookie = cookies.find(cookie => cookie.trim().startsWith('XSRF-TOKEN='));
+            if (csrfCookie) {
+                const csrfToken = csrfCookie.split('=')[1];
+                config.headers['X-XSRF-TOKEN'] = csrfToken;
+            }
+            return config;
+        }, function (error) {
+            return Promise.reject(error);
+        });
+
+        const { createApp, ref } = Vue;
+
+        const app = createApp({
+            setup() {
+                const activeMenu = ref('employee');
+                const employeeList = ref([]);
+                const attendanceList = ref([]);
+                const salaryList = ref([]);
+                const editDialogVisible = ref(false);
+                const editForm = ref({
+                    id: null,
+                    username: '',
+                    password: '',
+                    roles: []
+                });
+
+                const loadEmployees = async () => {
+                    try {
+                        const response = await axios.get('/employee/list');
+                        console.log('Response:', response.data);
+                        if (response.data.code === 200) {
+                            employeeList.value = response.data.data;
+                        } else {
+                            ElementPlus.ElMessage.error(response.data.message || '获取员工列表失败');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        ElementPlus.ElMessage.error('获取员工列表失败');
+                    }
+                };
+
+                const loadAttendance = async () => {
+                    try {
+                        const response = await axios.get('/attendance/list');
+                        console.log('Response:', response.data);
+                        if (response.data.code === 200) {
+                            attendanceList.value = response.data.data;
+                        } else {
+                            ElementPlus.ElMessage.error(response.data.message || '获取考勤记录失败');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        ElementPlus.ElMessage.error('获取考勤记录失败');
+                    }
+                };
+
+                const loadSalary = async () => {
+                    try {
+                        const response = await axios.get('/salary/list');
+                        console.log('Response:', response.data);
+                        if (response.data.code === 200) {
+                            salaryList.value = response.data.data;
+                        } else {
+                            ElementPlus.ElMessage.error(response.data.message || '获取薪资记录失败');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        ElementPlus.ElMessage.error('获取薪资记录失败');
+                    }
+                };
+
+                const handleSelect = (key) => {
+                    activeMenu.value = key;
+                    if (key === 'employee') {
+                        loadEmployees();
+                    } else if (key === 'attendance') {
+                        loadAttendance();
+                    } else {
+                        loadSalary();
+                    }
+                };
+
+                const logout = async () => {
+                    try {
+                        await axios.get('/logout');
+                        window.location.href = '/login';
+                    } catch (error) {
+                        ElementPlus.ElMessage.error('退出失败');
+                    }
+                };
+
+                // 页面载时获取员工列表
+                loadEmployees();
+
+                // 格式化日期时间
+                const formatDateTime = (timestamp) => {
+                    if (!timestamp) return '';
+                    const date = new Date(timestamp);
+                    return date.toLocaleString();
+                };
+
+                // 格式化货币
+                const formatCurrency = (amount) => {
+                    if (!amount) return '¥0.00';
+                    return `¥${Number(amount).toFixed(2)}`;
+                };
+
+                const handleEdit = (row) => {
+                    window.location.href = `/employee-edit.html?id=${row.id}&from=hr`;
+                };
+
+                const submitEdit = async () => {
+                    try {
+                        const response = await axios.put('/user/edit', editForm.value);
+                        if (response.data.code === 200) {
+                            ElementPlus.ElMessage.success('修改成功');
+                            editDialogVisible.value = false;
+                            loadEmployees();
+                        } else {
+                            ElementPlus.ElMessage.error(response.data.message || '修改失败');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        ElementPlus.ElMessage.error('修改失败');
+                    }
+                };
+
+                const handleDelete = async (row) => {
+                    try {
+                        await ElementPlus.ElMessageBox.confirm('确定要删除该用户吗？', '提示', {
+                            confirmButtonText: '确定',
+                            cancelButtonText: '取消',
+                            type: 'warning'
+                        });
+                        const response = await axios.delete(`/user/delete/${row.id}`);
+                        if (response.data.code === 200) {
+                            ElementPlus.ElMessage.success('删除成功');
+                            loadEmployees();
+                        } else {
+                            ElementPlus.ElMessage.error(response.data.message || '删除失败');
+                        }
+                    } catch (error) {
+                        if (error !== 'cancel') {
+                            console.error('Error:', error);
+                            ElementPlus.ElMessage.error('删除失败');
+                        }
+                    }
+                };
+
+                // 添加考勤相关
+                const addAttendanceDialogVisible = ref(false);
+                const addAttendanceForm = ref({
+                    userId: null,
+                    attendanceDate: null,
+                    checkIn: null,
+                    checkOut: null,
+                    status: '正常'
+                });
+
+                const handleAddAttendance = () => {
+                    window.location.href = '/attendance-edit.html?from=hr';
+                };
+
+                const submitAddAttendance = async () => {
+                    try {
+                        const response = await axios.post('/attendance/add', {
+                            userId: addAttendanceForm.value.userId,
+                            attendanceDate: addAttendanceForm.value.attendanceDate,
+                            checkIn: addAttendanceForm.value.checkIn,
+                            checkOut: addAttendanceForm.value.checkOut,
+                            status: addAttendanceForm.value.status
+                        });
+                        if (response.data.code === 200) {
+                            ElementPlus.ElMessage.success('添加成功');
+                            addAttendanceDialogVisible.value = false;
+                            loadAttendance();
+                        } else {
+                            ElementPlus.ElMessage.error(response.data.message || '添加失败');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        ElementPlus.ElMessage.error('添加失败');
+                    }
+                };
+
+                // 添加薪资相关
+                const addSalaryDialogVisible = ref(false);
+                const addSalaryForm = ref({
+                    userId: null,
+                    salaryMonth: null,
+                    baseSalary: 0,
+                    bonus: 0
+                });
+
+                const handleAddSalary = () => {
+                    window.location.href = '/salary-edit.html?from=hr';
+                };
+
+                const submitAddSalary = async () => {
+                    try {
+                        const response = await axios.post('/salary/add', {
+                            userId: addSalaryForm.value.userId,
+                            salaryMonth: addSalaryForm.value.salaryMonth,
+                            baseSalary: addSalaryForm.value.baseSalary,
+                            bonus: addSalaryForm.value.bonus
+                        });
+                        if (response.data.code === 200) {
+                            ElementPlus.ElMessage.success('添加成功');
+                            addSalaryDialogVisible.value = false;
+                            loadSalary();
+                        } else {
+                            ElementPlus.ElMessage.error(response.data.message || '添加失败');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        ElementPlus.ElMessage.error('添加失败');
+                    }
+                };
+
+                // 添加员工相关
+                const addEmployeeDialogVisible = ref(false);
+                const addEmployeeForm = ref({
+                    username: '',
+                    password: '',
+                    roles: []
+                });
+
+                const handleAddEmployee = () => {
+                    window.location.href = '/employee-edit.html?from=hr';
+                };
+
+                const submitAddEmployee = async () => {
+                    try {
+                        const response = await axios.post('/user/add', addEmployeeForm.value);
+                        if (response.data.code === 200) {
+                            ElementPlus.ElMessage.success('添加成功');
+                            addEmployeeDialogVisible.value = false;
+                            loadEmployees();
+                        } else {
+                            ElementPlus.ElMessage.error(response.data.message || '添加失败');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        ElementPlus.ElMessage.error('添加失败');
+                    }
+                };
+
+                return {
+                    activeMenu,
+                    employeeList,
+                    attendanceList,
+                    salaryList,
+                    handleSelect,
+                    logout,
+                    formatDateTime,
+                    formatCurrency,
+                    editDialogVisible,
+                    editForm,
+                    handleEdit,
+                    submitEdit,
+                    handleDelete,
+                    addAttendanceDialogVisible,
+                    addAttendanceForm,
+                    handleAddAttendance,
+                    submitAddAttendance,
+                    addSalaryDialogVisible,
+                    addSalaryForm,
+                    handleAddSalary,
+                    submitAddSalary,
+                    addEmployeeDialogVisible,
+                    addEmployeeForm,
+                    handleAddEmployee,
+                    submitAddEmployee
+                };
+            }
+        });
+
+        app.use(ElementPlus);
+        app.mount('#app');
+    </script>
+</body>
+
+</html>

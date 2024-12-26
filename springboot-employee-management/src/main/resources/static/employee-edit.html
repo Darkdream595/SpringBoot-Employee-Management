@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>员工管理 - 编辑</title>
+    <link rel="stylesheet" href="//unpkg.com/element-plus/dist/index.css">
+    <style>
+        body {
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .title {
+            font-size: 24px;
+            color: #303133;
+        }
+
+        .form-container {
+            padding: 20px;
+        }
+
+        .button-group {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .el-form-item {
+            margin-bottom: 25px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div class="container">
+            <div class="header">
+                <h2 class="title">{{ isEdit ? '编辑员工' : '添加员工' }}</h2>
+                <el-button @click="goBack">返回</el-button>
+            </div>
+            <div class="form-container">
+                <el-form :model="form" label-width="100px">
+                    <el-form-item label="用户名">
+                        <el-input v-model="form.username"></el-input>
+                    </el-form-item>
+                    <el-form-item label="密码">
+                        <el-input v-model="form.password" type="password"
+                            :placeholder="isEdit ? '不修改请留空' : '请输入密码'"></el-input>
+                    </el-form-item>
+                    <el-form-item label="角色">
+                        <el-select v-model="form.roles" multiple placeholder="请选择角色">
+                            <el-option label="普通员工" value="NORMAL_EMPLOYEE"></el-option>
+                            <el-option label="HR" value="HR"></el-option>
+                            <el-option label="系统管理员" value="SYSTEM_ADMIN"></el-option>
+                        </el-select>
+                    </el-form-item>
+                    <div class="button-group">
+                        <el-button @click="goBack">取消</el-button>
+                        <el-button type="primary" @click="submitForm">确定</el-button>
+                    </div>
+                </el-form>
+            </div>
+        </div>
+    </div>
+
+    <script src="//unpkg.com/vue@3"></script>
+    <script src="//unpkg.com/element-plus"></script>
+    <script src="//unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+
+        const app = createApp({
+            setup() {
+                const form = ref({
+                    id: null,
+                    username: '',
+                    password: '',
+                    roles: []
+                });
+
+                const isEdit = ref(false);
+
+                onMounted(() => {
+                    // 从URL获取参数
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const id = urlParams.get('id');
+                    if (id) {
+                        isEdit.value = true;
+                        loadEmployeeData(id);
+                    }
+                });
+
+                const loadEmployeeData = async (id) => {
+                    try {
+                        const response = await axios.get(`/user/${id}`);
+                        if (response.data.code === 200) {
+                            const data = response.data.data;
+                            form.value = {
+                                id: data.id,
+                                username: data.username,
+                                password: '',
+                                roles: data.roles || []
+                            };
+                        } else {
+                            ElementPlus.ElMessage.error('获取员工信息失败');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        ElementPlus.ElMessage.error('获取员工信息失败');
+                    }
+                };
+
+                const submitForm = async () => {
+                    try {
+                        let response;
+                        if (isEdit.value) {
+                            response = await axios.post('/user/edit', form.value);
+                        } else {
+                            response = await axios.post('/user/add', form.value);
+                        }
+
+                        if (response.data.code === 200) {
+                            ElementPlus.ElMessage.success(isEdit.value ? '修改成功' : '添加成功');
+                            goBack();
+                        } else {
+                            ElementPlus.ElMessage.error(response.data.message || (isEdit.value ? '修改失败' : '添加失败'));
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        ElementPlus.ElMessage.error(isEdit.value ? '修改失败' : '添加失败');
+                    }
+                };
+
+                const goBack = () => {
+                    // 获取来源页面
+                    const from = new URLSearchParams(window.location.search).get('from') || 'hr';
+                    window.location.href = `/${from}.html`;
+                };
+
+                return {
+                    form,
+                    isEdit,
+                    submitForm,
+                    goBack
+                };
+            }
+        });
+
+        app.use(ElementPlus);
+        app.mount('#app');
+    </script>
+</body>
+
+</html>

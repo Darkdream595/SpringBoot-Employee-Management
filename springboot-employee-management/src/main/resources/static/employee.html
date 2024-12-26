@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>员工考勤管理系统 - 普通员工</title>
+    <link rel="stylesheet" href="//unpkg.com/element-plus/dist/index.css">
+    <style>
+        .header {
+            background-color: #409EFF;
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .container {
+            padding: 20px;
+        }
+
+        .welcome {
+            margin-bottom: 20px;
+            animation: fadeIn 1s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .attendance-card {
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+
+        .attendance-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-header .title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div class="header">
+            <h2>员工考勤管理系统</h2>
+            <el-button type="danger" @click="logout">退出登录</el-button>
+        </div>
+
+        <div class="container">
+            <div class="welcome">
+                <el-alert title="欢迎访问员工考勤管理系统" type="success" :closable="false" show-icon>
+                    <p>您当前的角色是：普通员工</p>
+                </el-alert>
+            </div>
+
+            <el-card class="attendance-card">
+                <template #header>
+                    <div class="card-header">
+                        <span class="title">我的考勤记录</span>
+                    </div>
+                </template>
+                <el-table :data="attendanceList" stripe style="width: 100%">
+                    <el-table-column prop="id" label="ID" width="80" align="center">
+                        <template #default="scope">
+                            {{ scope.row.id || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="attendanceDate" label="考勤日期" width="120" align="center">
+                        <template #default="scope">
+                            {{ scope.row.attendanceDate || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="checkIn" label="签到时间" width="120" align="center">
+                        <template #default="scope">
+                            {{ scope.row.checkIn || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="checkOut" label="签退时间" width="120" align="center">
+                        <template #default="scope">
+                            {{ scope.row.checkOut || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="status" label="状态" width="100" align="center">
+                        <template #default="scope">
+                            {{ scope.row.status || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="gmtCreate" label="创建时间" width="180" align="center">
+                        <template #default="scope">
+                            {{ formatDateTime(scope.row.gmtCreate) || 'null' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="gmtModified" label="修改时间" width="180" align="center">
+                        <template #default="scope">
+                            {{ formatDateTime(scope.row.gmtModified) || 'null' }}
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </el-card>
+        </div>
+
+        <!-- 详情对话框 -->
+        <el-dialog v-model="dialogVisible" :title="dialogTitle" width="30%">
+            <div>
+                <p>日期：{{ currentItem.date }}</p>
+                <p>签到时间：{{ currentItem.checkIn }}</p>
+                <p>签退时间：{{ currentItem.checkOut }}</p>
+                <p>状态：{{ currentItem.status }}</p>
+            </div>
+        </el-dialog>
+    </div>
+
+    <script src="//unpkg.com/vue@3"></script>
+    <script src="//unpkg.com/element-plus"></script>
+    <script src="//unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        const { createApp, ref } = Vue;
+
+        const app = createApp({
+            setup() {
+                const attendanceList = ref([]);
+                const dialogVisible = ref(false);
+                const dialogTitle = ref('');
+                const currentItem = ref({});
+
+                const loadAttendance = async () => {
+                    try {
+                        const response = await axios.get('/attendance/my');
+                        console.log('Response:', response.data);
+                        if (response.data.code === 200) {
+                            attendanceList.value = response.data.data;
+                        } else {
+                            ElementPlus.ElMessage.error(response.data.message || '获取考勤记录失败');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        ElementPlus.ElMessage.error('获取考勤记录失败');
+                    }
+                };
+
+                const viewDetails = (row) => {
+                    currentItem.value = row;
+                    dialogTitle.value = '考勤详情';
+                    dialogVisible.value = true;
+                };
+
+                const logout = async () => {
+                    try {
+                        await axios.get('/logout');
+                        window.location.href = '/login';
+                    } catch (error) {
+                        ElementPlus.ElMessage.error('退出失败');
+                    }
+                };
+
+                // 页面加载时获取考勤记录
+                loadAttendance();
+
+                // 格式化日期时间
+                const formatDateTime = (timestamp) => {
+                    if (!timestamp) return '';
+                    const date = new Date(timestamp);
+                    return date.toLocaleString();
+                };
+
+                return {
+                    attendanceList,
+                    dialogVisible,
+                    dialogTitle,
+                    currentItem,
+                    viewDetails,
+                    logout,
+                    formatDateTime
+                };
+            }
+        });
+
+        app.use(ElementPlus);
+        app.mount('#app');
+    </script>
+</body>
+
+</html>

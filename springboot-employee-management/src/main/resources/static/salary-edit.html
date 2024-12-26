@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>薪资管理 - 编辑</title>
+    <link rel="stylesheet" href="//unpkg.com/element-plus/dist/index.css">
+    <style>
+        body {
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .title {
+            font-size: 24px;
+            color: #303133;
+        }
+
+        .form-container {
+            padding: 20px;
+        }
+
+        .button-group {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .el-form-item {
+            margin-bottom: 25px;
+        }
+
+        .el-select,
+        .el-date-picker,
+        .el-input-number {
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div class="container">
+            <div class="header">
+                <h2 class="title">{{ isEdit ? '编辑薪资记录' : '添加薪资记录' }}</h2>
+                <el-button @click="goBack">返回</el-button>
+            </div>
+            <div class="form-container">
+                <el-form :model="form" label-width="100px">
+                    <el-form-item label="用户">
+                        <el-select v-model="form.userId" placeholder="请选择用户">
+                            <el-option v-for="user in employeeList" :key="user.id" :label="user.username"
+                                :value="user.id">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item label="工资月份">
+                        <el-date-picker v-model="form.salaryMonth" type="month" placeholder="选择月份" format="YYYY-MM"
+                            value-format="YYYY-MM">
+                        </el-date-picker>
+                    </el-form-item>
+                    <el-form-item label="基本工资">
+                        <el-input-number v-model="form.baseSalary" :precision="2" :step="100"></el-input-number>
+                    </el-form-item>
+                    <el-form-item label="奖金">
+                        <el-input-number v-model="form.bonus" :precision="2" :step="100"></el-input-number>
+                    </el-form-item>
+                    <div class="button-group">
+                        <el-button @click="goBack">取消</el-button>
+                        <el-button type="primary" @click="submitForm">确定</el-button>
+                    </div>
+                </el-form>
+            </div>
+        </div>
+    </div>
+
+    <script src="//unpkg.com/vue@3"></script>
+    <script src="//unpkg.com/element-plus"></script>
+    <script src="//unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+
+        const app = createApp({
+            setup() {
+                const form = ref({
+                    id: null,
+                    userId: null,
+                    salaryMonth: null,
+                    baseSalary: 0,
+                    bonus: 0
+                });
+
+                const employeeList = ref([]);
+                const isEdit = ref(false);
+
+                onMounted(() => {
+                    loadEmployees();
+                    // 从URL获取参数
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const id = urlParams.get('id');
+                    if (id) {
+                        isEdit.value = true;
+                        loadSalaryData(id);
+                    }
+                });
+
+                const loadEmployees = async () => {
+                    try {
+                        const response = await axios.get('/employee/list');
+                        if (response.data.code === 200) {
+                            employeeList.value = response.data.data;
+                        } else {
+                            ElementPlus.ElMessage.error('获取员工列表失败');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        ElementPlus.ElMessage.error('获取员工列表失败');
+                    }
+                };
+
+                const loadSalaryData = async (id) => {
+                    try {
+                        const response = await axios.get(`/salary/${id}`);
+                        if (response.data.code === 200) {
+                            const data = response.data.data;
+                            form.value = {
+                                id: data.id,
+                                userId: data.userId,
+                                salaryMonth: data.salaryMonth,
+                                baseSalary: data.baseSalary,
+                                bonus: data.bonus
+                            };
+                        } else {
+                            ElementPlus.ElMessage.error('获取薪资记录失败');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        ElementPlus.ElMessage.error('获取薪资记录失败');
+                    }
+                };
+
+                const submitForm = async () => {
+                    try {
+                        let response;
+                        if (isEdit.value) {
+                            response = await axios.put('/salary/edit', form.value);
+                        } else {
+                            response = await axios.post('/salary/add', form.value);
+                        }
+
+                        if (response.data.code === 200) {
+                            ElementPlus.ElMessage.success(isEdit.value ? '修改成功' : '添加成功');
+                            goBack();
+                        } else {
+                            ElementPlus.ElMessage.error(response.data.message || (isEdit.value ? '修改失败' : '添加失败'));
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        ElementPlus.ElMessage.error(isEdit.value ? '修改失败' : '添加失败');
+                    }
+                };
+
+                const goBack = () => {
+                    // 获取来源页面
+                    const from = new URLSearchParams(window.location.search).get('from') || 'hr';
+                    window.location.href = `/${from}.html`;
+                };
+
+                return {
+                    form,
+                    employeeList,
+                    isEdit,
+                    submitForm,
+                    goBack
+                };
+            }
+        });
+
+        app.use(ElementPlus);
+        app.mount('#app');
+    </script>
+</body>
+
+</html>
