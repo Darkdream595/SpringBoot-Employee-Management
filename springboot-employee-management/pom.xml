@@ -8,7 +8,7 @@
         <version>3.4.0</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>cn.edu.ncut.cs.springboot</groupId>
+    <groupId>cn.example.springboot</groupId>
     <artifactId>springboot-employee-management</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>springboot-employee-management</name>
